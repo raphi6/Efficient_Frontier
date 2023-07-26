@@ -90,6 +90,7 @@ def maxSharpe(meanReturns, covMatrix, riskFreeRate=0, constraintSet=(0,1)):
 
 def portfolioVariance(weights, meanReturns, covMatrix):
 
+    print(portfolioPerformance(weights, meanReturns, covMatrix)[1])
     return portfolioPerformance(weights, meanReturns, covMatrix)[1]
 
 def minVariance(meanReturns, covMatrix, constraintSet=(0,1)):
@@ -98,6 +99,7 @@ def minVariance(meanReturns, covMatrix, constraintSet=(0,1)):
     numAssets = len(meanReturns)
     args = (meanReturns, covMatrix)
     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})  # sum of all weights must be 1
+
     bound = constraintSet
     bounds = tuple(bound for asset in range(numAssets))
 
@@ -152,25 +154,21 @@ def portfolioReturn(weights, meanReturns, covMatrix):
 
     return portfolioPerformance(weights, meanReturns, covMatrix)[0]
 
-def efficientOpt(meanReturns, covMatrix, returnTarget, constraintSet=(0, 1)):
+def efficientOpt(meanReturns, covMatrix, returnTarget, constraintSet=(0., 1)):
 
     """ For each return target (mu_b), we want to optimize the portfolio for min variance. """
 
-    # numAssets = len(meanReturns)
-    # args = (meanReturns, covMatrix)
-    #
-    # constraint = ({'type': 'eq', 'fun': lambda x: portfolioReturn(x, meanReturns, covMatrix) - returnTarget},
-    #               {'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
-    # bound = constraintSet
-    # bounds = tuple(bound for asset in range(numAssets))
-    # effOpt = sc.minimize(portfolioVariance, numAssets*[1./numAssets], args=args, method='SLSQP', bounds=bounds,
-    #                      constraints=constraint)
-    #
-    # return effOpt
+
     numAssets = len(meanReturns)
     args = (meanReturns, covMatrix)
-    constraints = ({'type': 'eq', 'fun': lambda x: portfolioReturn(x, meanReturns, covMatrix) - returnTarget},
-                   {'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    constraints = [{'type': 'eq', 'fun': lambda x: portfolioReturn(x, meanReturns, covMatrix) - returnTarget},
+                    {'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]
+    #constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    #constraints = ({'type': 'eq', 'fun': lambda x: portfolioReturn(x, meanReturns, covMatrix) - returnTarget})
+    print(covMatrix)
+    print(meanReturns)
+    print(returnTarget)
+
     bound = constraintSet
     bounds = tuple(bound for asset in range(numAssets))
     effOpt = sc.minimize(portfolioVariance, numAssets * [1. / numAssets], args=args, method='SLSQP', bounds=bounds,
@@ -181,15 +179,29 @@ def efficientOpt(meanReturns, covMatrix, returnTarget, constraintSet=(0, 1)):
 
 
 end_date = dt.datetime.now()  # - datet.timedelta(days=1600)
-start_date = end_date - dt.timedelta(days=365)
-stock_list = ['GOOGL', 'TSLA', 'ADBE', 'AMZN']
+start_date = end_date - dt.timedelta(days=30)
+stock_list = ['GOOGL', 'TSLA', 'ADBE']
 #stock_list = ['GOOGL', 'TSLA', 'MSFT']
 #weights = np.array([0.3, 0.3, 0.4])
 
 
-meanReturns, covMatrix = getData(stocks=stock_list, start=start_date, end=end_date)
+#meanReturns, covMatrix = getData(stocks=stock_list, start=start_date, end=end_date)
 
 
-print(calculatedResults(meanReturns, covMatrix))
+#print(calculatedResults(meanReturns, covMatrix))
 
-#print(efficientOpt(meanReturns, covMatrix, 0.06))
+
+yahoo_data = pandasdr.get_data_yahoo(stock_list, end=end_date, start=start_date)['Close']
+
+dr = yahoo_data.pct_change()
+covariance_matrix = dr.cov()
+std_dr = dr.std()
+
+dr_mean = dr.mean()
+
+
+
+print(efficientOpt(dr_mean, covariance_matrix, 0.05))
+
+
+
